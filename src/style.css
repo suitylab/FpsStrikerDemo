@@ -1,0 +1,1445 @@
+/* ==========================================================================
+   FPS Strike Survival — Global Styles & HUD Overlay
+   Phase 1: Walking Skeleton
+   Dark military/sci-fi aesthetic matching the design doc
+   ========================================================================== */
+
+/* --- Global Reset --- */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* --- Canvas Container --- */
+#app {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* --- HUD Overlay Container --- */
+#hud {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* Clicks pass through to canvas for pointer lock */
+  z-index: 10;
+}
+
+/* --- HUD Panels (shared styling) --- */
+.hud-panel {
+  position: absolute;
+  background: rgba(10, 12, 20, 0.75);
+  border: 1px solid rgba(80, 200, 255, 0.25);
+  border-radius: 6px;
+  padding: 12px 16px;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+/* --- Panel Positions --- */
+.hud-panel-top-left {
+  top: 16px;
+  left: 16px;
+}
+
+.hud-panel-top-right {
+  top: 16px;
+  right: 16px;
+  text-align: right;
+  min-width: 90px;
+}
+
+/* --- HUD Typography --- */
+.hud-title {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #4fc3f7;
+  text-shadow: 0 0 12px rgba(79, 195, 247, 0.5);
+}
+
+.hud-map-name {
+  margin: 0 0 10px 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #ffd9a0;
+  text-transform: uppercase;
+  text-shadow: 0 0 8px rgba(255, 217, 160, 0.4);
+  border-bottom: 1px solid rgba(255, 217, 160, 0.3);
+  padding-bottom: 6px;
+}
+
+.hud-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.hud-position {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 14px;
+  color: #e0f7fa;
+  letter-spacing: 1px;
+}
+
+.hud-fps {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 28px;
+  font-weight: 700;
+  color: #4fc3f7;
+  text-shadow: 0 0 12px rgba(79, 195, 247, 0.5);
+}
+
+/* --- Bottom-Center Hint --- */
+.hud-hint {
+  position: absolute;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 12, 20, 0.7);
+  border: 1px solid rgba(80, 200, 255, 0.2);
+  border-radius: 4px;
+  padding: 10px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  color: rgba(255, 255, 255, 0.85);
+  text-align: center;
+  animation: hintPulse 2s ease-in-out infinite;
+}
+
+/* --- Hint Pulse Animation --- */
+@keyframes hintPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* --- Center Crosshair (Phase 3 will make this dynamic) --- */
+#crosshair {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 6px;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  border-radius: 50%;
+  z-index: 5;
+  pointer-events: none;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+}
+
+/* --- Responsive: Small Screens --- */
+@media (max-width: 768px) {
+  .hud-title {
+    font-size: 14px;
+  }
+  .hud-fps {
+    font-size: 20px;
+  }
+  .hud-position {
+    font-size: 12px;
+  }
+}
+
+/* ==========================================================================
+   Phase 3: Weapon System HUD Styles
+   Crosshair, weapon panel, ammo display, reload prompt
+   ========================================================================== */
+
+/* --- Center Crosshair Container --- */
+.hud-crosshair {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 15; /* Above other HUD panels */
+  width: 0;
+  height: 0;
+}
+
+/* --- Crosshair Center Dot --- */
+.hud-crosshair-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.5);
+}
+
+/* --- Crosshair Lines (base positioning) --- */
+.hud-crosshair-line {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2px;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.4);
+  border-radius: 1px;
+}
+
+/* The transform is set dynamically by JS for expansion/contraction */
+.hud-crosshair-top {
+  transform: translate(-50%, -100%);
+}
+
+.hud-crosshair-bottom {
+  transform: translate(-50%, 0);
+}
+
+.hud-crosshair-left {
+  transform: translate(-100%, -50%);
+}
+
+.hud-crosshair-right {
+  transform: translate(0, -50%);
+}
+
+/* Left/right lines should be horizontal (wider than tall) */
+.hud-crosshair-left,
+.hud-crosshair-right {
+  width: 10px;
+  height: 2px;
+}
+
+/* --- Bottom-Right Weapon Panel --- */
+.hud-panel-bottom-right {
+  bottom: 16px;
+  right: 16px;
+  min-width: 180px;
+  text-align: right;
+}
+
+/* --- Weapon Name --- */
+.hud-weapon-name {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #4fc3f7;
+  text-shadow: 0 0 12px rgba(79, 195, 247, 0.5);
+  margin-bottom: 4px;
+}
+
+/* --- Ammo Display --- */
+.hud-ammo {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 24px;
+  font-weight: 700;
+  color: #ffe082;
+  letter-spacing: 2px;
+  text-shadow: 0 0 8px rgba(255, 224, 130, 0.4);
+}
+
+/* --- Grenade Count Display --- */
+.hud-grenade-count {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: #ff8f00;
+  letter-spacing: 2px;
+  text-shadow: 0 0 8px rgba(255, 143, 0, 0.4);
+  margin-top: 4px;
+}
+
+/* --- Reload Progress Bar Container --- */
+.hud-reload-bar-container {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+/* --- Reload Progress Bar Fill --- */
+.hud-reload-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #ff8f00, #ffc107);
+  border-radius: 2px;
+  transition: width 0.1s linear;
+  box-shadow: 0 0 6px rgba(255, 193, 7, 0.5);
+}
+
+/* --- Reload Prompt --- */
+.hud-reload-prompt {
+  position: fixed;
+  top: 60%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #ff5722;
+  text-shadow: 0 0 12px rgba(255, 87, 34, 0.6);
+  pointer-events: none;
+  z-index: 20; /* Above crosshair */
+  text-align: center;
+}
+
+/* --- Reload Prompt Flash Animation --- */
+.hud-reload-prompt-flash {
+  animation: reloadPromptFlash 0.5s ease-in-out infinite;
+}
+
+@keyframes reloadPromptFlash {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* ==========================================================================
+   Phase 4: Enemy AI Foundation HUD Styles
+   Kill counter, player health bar, hit markers
+   ========================================================================== */
+
+/* --- Kill Counter (top-left panel) --- */
+.hud-kill-count {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #ff6d00;
+  text-shadow: 0 0 12px rgba(255, 109, 0, 0.6), 0 0 24px rgba(255, 109, 0, 0.3);
+  margin-bottom: 8px;
+}
+
+/* --- Bottom-Left Health Panel --- */
+.hud-panel-bottom-left {
+  bottom: 16px;
+  left: 16px;
+  min-width: 200px;
+}
+
+/* --- Health Bar Container --- */
+.hud-health-bar-container {
+  width: 100%;
+  height: 14px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+/* --- Health Bar Fill --- */
+.hud-health-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #00c853, #69f0ae);
+  border-radius: 3px;
+  transition: width 0.2s ease-out;
+  box-shadow: 0 0 8px rgba(0, 200, 83, 0.4);
+}
+
+/* --- Health Text --- */
+.hud-health-text {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  margin-top: 4px;
+  text-align: right;
+  letter-spacing: 1px;
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.8);
+}
+
+/* --- Hit Marker (center screen) --- */
+.hud-hitmarker {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 40px;
+  pointer-events: none;
+  z-index: 25;
+  animation: hitMarkerScaleIn 0.15s ease-out;
+}
+
+/* --- Hit Marker Lines (X shape) --- */
+.hud-hitmarker-line {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 100%;
+  background: #ffffff;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.8), 0 0 12px rgba(255, 255, 255, 0.4);
+  border-radius: 2px;
+}
+
+/* Line 1: rotated 45 degrees */
+.hud-hitmarker-line-1 {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+/* Line 2: rotated -45 degrees */
+.hud-hitmarker-line-2 {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+/* --- Hit Marker Colors --- */
+/* Normal hit: white */
+.hud-hitmarker-hit .hud-hitmarker-line {
+  background: #ffffff;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.8), 0 0 12px rgba(255, 255, 255, 0.4);
+}
+
+/* Kill: red */
+.hud-hitmarker-kill .hud-hitmarker-line {
+  background: #ff1744;
+  box-shadow: 0 0 6px rgba(255, 23, 68, 0.8), 0 0 12px rgba(255, 23, 68, 0.4);
+}
+
+/* --- Hit Marker Scale-In Animation --- */
+@keyframes hitMarkerScaleIn {
+  0% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0;
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.0);
+    opacity: 1;
+  }
+}
+
+/* ==========================================================================
+   Phase 5: Full Weapons Arsenal HUD Styles
+   Scope overlay, weapon slots, zoom indicator
+   ========================================================================== */
+
+/* --- Scope Overlay (sniper aiming circle) --- */
+.hud-scope-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 30;
+  /* Transparent circular lens, blacked out around the edges */
+  background: radial-gradient(circle at center, transparent 0 38%, rgba(0, 0, 0, 0.85) 40%, rgba(0, 0, 0, 0.96) 48%, black 60%);
+}
+
+/* --- Scope Crosshair Container (clips everything to a circle) --- */
+.hud-scope-crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 76vmin;
+  height: 76vmin;
+  overflow: hidden;
+  border-radius: 50%;
+}
+
+/* --- Scope Reticle Ring (center, also clipped) --- */
+.hud-scope-circle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 76vmin;
+  height: 76vmin;
+  border: 2px solid rgba(0, 0, 0, 0.9);
+  border-radius: 50%;
+  box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+/* --- Scope Crosshair Lines (base) --- */
+.hud-scope-line {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.92);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.15);
+}
+
+/* --- Horizontal Line --- */
+.hud-scope-line-h {
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  transform: translateY(-50%);
+}
+
+/* --- Vertical Line --- */
+.hud-scope-line-v {
+  top: 0;
+  left: 50%;
+  width: 2px;
+  height: 100%;
+  transform: translateX(-50%);
+}
+
+/* --- Weapon Slots (bottom-center, 6 slots) --- */
+.hud-weapon-slots {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 15;
+  pointer-events: none;
+}
+
+/* --- Individual Weapon Slot --- */
+.hud-weapon-slot {
+  background: rgba(10, 12, 20, 0.75);
+  border: 1px solid rgba(80, 200, 255, 0.25);
+  border-radius: 6px;
+  padding: 8px 12px;
+  min-width: 70px;
+  text-align: center;
+  backdrop-filter: blur(4px);
+  transition: all 0.2s ease;
+}
+
+/* --- Active Weapon Slot --- */
+.hud-weapon-slot.active {
+  border-color: #4fc3f7;
+  background: rgba(20, 40, 60, 0.85);
+  box-shadow: 0 0 12px rgba(79, 195, 247, 0.4);
+  transform: translateY(-4px);
+}
+
+/* --- Locked Weapon Slot --- */
+.hud-weapon-slot.locked {
+  opacity: 0.45;
+  border-color: rgba(120, 120, 130, 0.3);
+  background: rgba(15, 15, 22, 0.6);
+  filter: grayscale(1);
+}
+
+/* --- Slot Number --- */
+.hud-weapon-slot-number {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 1px;
+}
+
+/* --- Active Slot Number --- */
+.hud-weapon-slot.active .hud-weapon-slot-number {
+  color: #4fc3f7;
+}
+
+/* --- Slot Name --- */
+.hud-weapon-slot-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 1px;
+  margin-top: 2px;
+}
+
+/* --- Slot Ammo --- */
+.hud-weapon-slot-ammo {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 11px;
+  color: rgba(255, 224, 130, 0.8);
+  margin-top: 2px;
+}
+
+/* --- Zoom Indicator (center-bottom, shows current zoom level) --- */
+.hud-zoom-indicator {
+  position: fixed;
+  bottom: 120px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 24px;
+  font-weight: 700;
+  color: #4fc3f7;
+  text-shadow: 0 0 12px rgba(79, 195, 247, 0.6);
+  letter-spacing: 2px;
+  z-index: 20;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   Phase 7: Tower Defense Survival Mode Styles
+   Wave number, progress bar, announcements, countdown, game over
+   ========================================================================== */
+
+/* --- Wave Number Display (top-left HUD panel) --- */
+.hud-wave-number {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #4fc3f7;
+  text-shadow: 0 0 12px rgba(79, 195, 247, 0.5), 0 0 24px rgba(79, 195, 247, 0.25);
+  margin-bottom: 8px;
+}
+
+/* --- Wave Progress Bar (top-left HUD panel) --- */
+.hud-wave-progress-bar-container {
+  width: 100%;
+  height: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 8px;
+  border: 1px solid rgba(80, 200, 255, 0.3);
+}
+
+.hud-wave-progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4fc3f7, #00e5ff);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 8px rgba(79, 195, 247, 0.5);
+}
+
+.hud-wave-progress-text {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  text-align: right;
+  margin-top: 4px;
+}
+
+/* ==========================================================================
+   Phase 7: Wave Announcement Overlay
+   Full-screen centered announcements with fade in/out
+   ========================================================================== */
+
+/* --- Wave Overlay Container (full-screen, above all HUD) --- */
+.wave-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+  z-index: 1000;
+  font-family: 'Arial Black', Arial, sans-serif;
+  text-align: center;
+}
+
+/* --- Wave Announcement Text (WAVE X INCOMING / CLEARED) --- */
+.wave-announcement {
+  font-size: 48px;
+  font-weight: bold;
+  color: #ffffff;
+  text-shadow: 0 0 20px rgba(255, 200, 0, 0.8), 0 0 40px rgba(255, 200, 0, 0.4);
+  opacity: 0;
+  transition: opacity 0.5s ease-in-out;
+  letter-spacing: 4px;
+  text-transform: uppercase;
+}
+
+/* --- Wave Countdown Text (NEXT WAVE IN Xs) --- */
+.wave-countdown {
+  font-size: 32px;
+  font-weight: bold;
+  color: #88ccff;
+  text-shadow: 0 0 15px rgba(100, 180, 255, 0.6);
+  opacity: 0;
+  transition: opacity 0.5s ease-in-out;
+  letter-spacing: 2px;
+  margin-top: 20px;
+}
+
+/* --- Game Over Screen --- */
+.wave-game-over {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  background: rgba(0, 0, 0, 0.85);
+  padding: 40px 60px;
+  border-radius: 10px;
+  border: 2px solid #ff4444;
+  box-shadow: 0 0 40px rgba(255, 0, 0, 0.3);
+}
+
+/* --- Wave Announcement Pulse Animation --- */
+@keyframes waveAnnouncementPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* Apply pulse animation when announcement is visible (opacity = 1) */
+.wave-announcement[style*='opacity: 1'] {
+  animation: waveAnnouncementPulse 2s ease-in-out infinite;
+}
+
+/* ==========================================================================
+   Phase 7: Responsive Adjustments for Small Screens
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .wave-announcement {
+    font-size: 32px;
+  }
+
+  .wave-countdown {
+    font-size: 24px;
+  }
+
+  .wave-game-over {
+    padding: 24px 32px;
+  }
+}
+
+/* ==========================================================================
+   Phase 8: Loot System Pickup Prompt Styles
+   Center-bottom interaction prompt for weapon/ammo pickups
+   ========================================================================== */
+
+/* --- Pickup Prompt (center-bottom, above weapon slots) --- */
+.hud-pickup-prompt {
+  position: fixed;
+  bottom: 140px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10, 12, 20, 0.85);
+  border: 1px solid rgba(79, 195, 247, 0.4);
+  border-radius: 6px;
+  padding: 12px 24px;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #ffffff;
+  text-shadow: 0 0 12px rgba(79, 195, 247, 0.6), 0 0 24px rgba(79, 195, 247, 0.3);
+  backdrop-filter: blur(4px);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), 0 0 30px rgba(79, 195, 247, 0.2);
+  z-index: 20;
+  pointer-events: none;
+  text-align: center;
+  animation: pickupPromptPulse 1.5s ease-in-out infinite;
+}
+
+/* --- Pickup Prompt Pulse Animation --- */
+@keyframes pickupPromptPulse {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), 0 0 30px rgba(79, 195, 247, 0.2);
+  }
+  50% {
+    opacity: 0.85;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), 0 0 40px rgba(79, 195, 247, 0.4);
+  }
+}
+
+/* --- INVENTORY FULL variant (red flash) --- */
+.hud-pickup-prompt[data-state='full'] {
+  border-color: rgba(255, 68, 68, 0.6);
+  color: #ff4444;
+  text-shadow: 0 0 12px rgba(255, 68, 68, 0.6), 0 0 24px rgba(255, 68, 68, 0.3);
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5), 0 0 30px rgba(255, 68, 68, 0.3);
+  animation: inventoryFullFlash 0.5s ease-in-out infinite;
+}
+
+@keyframes inventoryFullFlash {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* --- Responsive: Small Screens --- */
+@media (max-width: 768px) {
+  .hud-pickup-prompt {
+    bottom: 120px;
+    font-size: 14px;
+    padding: 10px 16px;
+  }
+}
+
+/* ==========================================================================
+   Phase 9: Map Selection Overlay Styles
+   Full-screen map selection screen with 3 map buttons
+   ========================================================================== */
+
+/* --- Map Selection Overlay Container (full-screen) --- */
+.map-select-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: rgba(5, 8, 15, 0.92);
+  z-index: 2000;
+  pointer-events: auto;
+  font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* --- Map Selection Title --- */
+.map-select-title {
+  font-size: 42px;
+  font-weight: 700;
+  letter-spacing: 6px;
+  color: #4fc3f7;
+  text-shadow: 0 0 20px rgba(79, 195, 247, 0.6), 0 0 40px rgba(79, 195, 247, 0.3);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+/* --- Map Selection Subtitle --- */
+.map-select-subtitle {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 3px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 40px;
+  text-transform: uppercase;
+}
+
+/* --- Map Selection Buttons Container --- */
+.map-select-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 420px;
+}
+
+/* --- Map Selection Button --- */
+.map-select-button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px 32px;
+  background: rgba(15, 25, 40, 0.85);
+  border: 2px solid rgba(79, 195, 247, 0.35);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  text-align: center;
+  backdrop-filter: blur(4px);
+}
+
+/* --- Map Selection Button Hover --- */
+.map-select-button:hover {
+  border-color: #4fc3f7;
+  background: rgba(25, 45, 70, 0.9);
+  box-shadow: 0 0 20px rgba(79, 195, 247, 0.3), 0 0 40px rgba(79, 195, 247, 0.15);
+  transform: translateY(-2px);
+}
+
+/* --- Map Selection Button Name --- */
+.map-select-button-name {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #ffffff;
+  text-shadow: 0 0 10px rgba(79, 195, 247, 0.4);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+/* --- Map Selection Button Description --- */
+.map-select-button-desc {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.4;
+}
+
+/* --- Map Selection Footer --- */
+.map-select-footer {
+  margin-top: 40px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.35);
+  text-transform: uppercase;
+}
+
+/* --- Responsive: Small Screens --- */
+@media (max-width: 768px) {
+  .map-select-title {
+    font-size: 28px;
+    letter-spacing: 4px;
+  }
+
+  .map-select-subtitle {
+    font-size: 12px;
+    letter-spacing: 2px;
+  }
+
+  .map-select-buttons {
+    max-width: 320px;
+  }
+
+  .map-select-button {
+    padding: 14px 20px;
+  }
+
+  .map-select-button-name {
+    font-size: 18px;
+  }
+
+  .map-select-button-desc {
+    font-size: 11px;
+  }
+}
+
+/* ==========================================================================
+   Phase 10: UI Polish & Game Flow Styles
+   Menu system, damage indicators, low health warning, hit marker polish
+   ========================================================================== */
+
+/* --- Shared Menu Overlay System --- */
+.game-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: rgba(5, 8, 15, 0.92);
+  z-index: 3000;
+  pointer-events: auto;
+  font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  backdrop-filter: blur(8px);
+  animation: menuFadeIn 0.3s ease-out forwards;
+  overflow-x: hidden;
+}
+
+/* Hidden state: force display none */
+.game-overlay[hidden] {
+  display: none !important;
+}
+
+/* --- Menu Fade-In Animation --- */
+@keyframes menuFadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* --- Menu Container --- */
+.menu-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+  padding: 48px 64px;
+  background: rgba(10, 15, 25, 0.85);
+  border: 2px solid rgba(79, 195, 247, 0.3);
+  border-radius: 12px;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.6), 0 0 60px rgba(79, 195, 247, 0.1);
+  backdrop-filter: blur(12px);
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+/* --- Menu Title --- */
+.menu-title {
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: 6px;
+  color: #4fc3f7;
+  text-shadow: 0 0 20px rgba(79, 195, 247, 0.6), 0 0 40px rgba(79, 195, 247, 0.3);
+  margin: 0;
+  text-align: center;
+  text-transform: uppercase;
+}
+
+/* --- Menu Buttons Container --- */
+.menu-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 320px;
+}
+
+/* --- Menu Button (base) --- */
+.menu-button {
+  padding: 14px 32px;
+  background: rgba(15, 25, 40, 0.85);
+  border: 2px solid rgba(79, 195, 247, 0.35);
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  backdrop-filter: blur(4px);
+  text-align: center;
+}
+
+/* --- Menu Button Hover --- */
+.menu-button:hover {
+  border-color: #4fc3f7;
+  background: rgba(25, 45, 70, 0.9);
+  box-shadow: 0 0 20px rgba(79, 195, 247, 0.3), 0 0 40px rgba(79, 195, 247, 0.15);
+  transform: translateY(-2px);
+}
+
+/* --- Menu Button Active/Pressed --- */
+.menu-button:active {
+  transform: translateY(0);
+  box-shadow: 0 0 10px rgba(79, 195, 247, 0.2);
+}
+
+/* --- Primary Menu Button (emphasis) --- */
+.menu-button-primary {
+  background: linear-gradient(135deg, rgba(79, 195, 247, 0.3), rgba(79, 195, 247, 0.1));
+  border-color: #4fc3f7;
+  box-shadow: 0 0 20px rgba(79, 195, 247, 0.2);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.menu-button-primary:hover {
+  background: linear-gradient(135deg, rgba(79, 195, 247, 0.5), rgba(79, 195, 247, 0.2));
+  box-shadow: 0 0 30px rgba(79, 195, 247, 0.4), 0 0 60px rgba(79, 195, 247, 0.2);
+}
+
+/* --- Menu Footer --- */
+.menu-footer {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.35);
+  text-transform: uppercase;
+  text-align: center;
+}
+
+/* ==========================================================================
+   Phase 10: Main Menu Specific Styles
+   ========================================================================== */
+
+/* --- Main Menu Title (large with glow) --- */
+#main-menu-overlay .menu-title {
+  font-size: 52px;
+  letter-spacing: 8px;
+  text-shadow: 0 0 30px rgba(79, 195, 247, 0.8), 0 0 60px rgba(79, 195, 247, 0.4), 0 0 90px rgba(79, 195, 247, 0.2);
+  margin-bottom: 8px;
+}
+
+/* --- Main Menu Container (slightly larger) --- */
+#main-menu-overlay .menu-container {
+  padding: 56px 72px;
+  gap: 40px;
+}
+
+/* ==========================================================================
+   Phase 10: Controls Overlay Styles
+   ========================================================================== */
+
+/* --- Controls List Container --- */
+.controls-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: calc(100% - 48px);
+  padding: 16px 24px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  border: 1px solid rgba(79, 195, 247, 0.15);
+  box-sizing: border-box;
+}
+
+/* --- Control Row --- */
+.control-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.control-row:last-child {
+  border-bottom: none;
+}
+
+/* --- Control Key (key cap style) --- */
+.control-key {
+  display: inline-block;
+  padding: 4px 12px;
+  background: rgba(79, 195, 247, 0.15);
+  border: 1px solid rgba(79, 195, 247, 0.4);
+  border-radius: 4px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: #4fc3f7;
+  text-shadow: 0 0 8px rgba(79, 195, 247, 0.4);
+  box-shadow: 0 2px 0 rgba(79, 195, 247, 0.2);
+  min-width: 80px;
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+/* --- Control Action --- */
+.control-action {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.8);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* ==========================================================================
+   Phase 10: Pause Menu Styles
+   (Reuses shared menu styles from above)
+   ========================================================================== */
+
+/* --- Pause Menu Container (slightly smaller) --- */
+#pause-overlay .menu-container {
+  padding: 40px 56px;
+  gap: 28px;
+}
+
+/* ==========================================================================
+   Phase 10: Game Over Screen Styles
+   ========================================================================== */
+
+/* --- Danger Title (red glow) --- */
+.menu-title-danger {
+  color: #ff1744;
+  text-shadow: 0 0 20px rgba(255, 23, 68, 0.8), 0 0 40px rgba(255, 23, 68, 0.4), 0 0 60px rgba(255, 23, 68, 0.2);
+}
+
+/* --- Game Over Stats Container --- */
+.game-over-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: calc(100% - 48px);
+  padding: 16px 24px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 23, 68, 0.2);
+  box-sizing: border-box;
+}
+
+/* --- Stat Row --- */
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.stat-row:last-child {
+  border-bottom: none;
+}
+
+/* --- Stat Label --- */
+.stat-label {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+}
+
+/* --- Stat Value --- */
+.stat-value {
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 24px;
+  font-weight: 700;
+  color: #ff1744;
+  text-shadow: 0 0 12px rgba(255, 23, 68, 0.5);
+}
+
+/* --- Game Over Container (slightly larger) --- */
+#game-over-overlay .menu-container {
+  padding: 48px 64px;
+  gap: 32px;
+}
+
+/* ==========================================================================
+   Phase 10: Damage Indicator Styles
+   ========================================================================== */
+
+/* --- Damage Indicator Container (full-screen, above HUD, below menus) --- */
+.damage-indicator {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 500;
+}
+
+/* --- Damage Indicator Flash (red radial gradient vignette) --- */
+.damage-indicator-flash {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(255, 0, 0, 0.4) 70%, rgba(255, 0, 0, 0.8) 100%);
+  animation: damageFlash 0.5s ease-out forwards;
+}
+
+/* --- Damage Flash Animation --- */
+@keyframes damageFlash {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* --- Directional Variants (8 directions) --- */
+/* Front (hit from front): red gradient at TOP edge */
+.damage-indicator-front .damage-indicator-flash {
+  background: linear-gradient(to bottom, rgba(255, 0, 0, 0.8) 0%, rgba(255, 0, 0, 0.4) 30%, transparent 60%);
+}
+
+/* Back (hit from behind): red gradient at BOTTOM edge */
+.damage-indicator-back .damage-indicator-flash {
+  background: linear-gradient(to top, rgba(255, 0, 0, 0.8) 0%, rgba(255, 0, 0, 0.4) 30%, transparent 60%);
+}
+
+/* Left: red gradient at left edge */
+.damage-indicator-left .damage-indicator-flash {
+  background: linear-gradient(to right, rgba(255, 0, 0, 0.8) 0%, rgba(255, 0, 0, 0.4) 30%, transparent 60%);
+}
+
+/* Right: red gradient at right edge */
+.damage-indicator-right .damage-indicator-flash {
+  background: linear-gradient(to left, rgba(255, 0, 0, 0.8) 0%, rgba(255, 0, 0, 0.4) 30%, transparent 60%);
+}
+
+/* Front-Left: red gradient at top-left corner */
+.damage-indicator-front-left .damage-indicator-flash {
+  background: radial-gradient(ellipse at 0% 0%, rgba(255, 0, 0, 0.8) 0%, rgba(255, 0, 0, 0.4) 30%, transparent 60%);
+}
+
+/* Front-Right: red gradient at top-right corner */
+.damage-indicator-front-right .damage-indicator-flash {
+  background: radial-gradient(ellipse at 100% 0%, rgba(255, 0, 0, 0.8) 0%, rgba(255, 0, 0, 0.4) 30%, transparent 60%);
+}
+
+/* Back-Left: red gradient at bottom-left corner */
+.damage-indicator-back-left .damage-indicator-flash {
+  background: radial-gradient(ellipse at 0% 100%, rgba(255, 0, 0, 0.8) 0%, rgba(255, 0, 0, 0.4) 30%, transparent 60%);
+}
+
+/* Back-Right: red gradient at bottom-right corner */
+.damage-indicator-back-right .damage-indicator-flash {
+  background: radial-gradient(ellipse at 100% 100%, rgba(255, 0, 0, 0.8) 0%, rgba(255, 0, 0, 0.4) 30%, transparent 60%);
+}
+
+/* ==========================================================================
+   Phase 10: Low Health Warning Styles
+   ========================================================================== */
+
+/* --- Low Health Vignette (persistent red vignette, shown when health < 30%) --- */
+.low-health-vignette {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 400;
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(255, 0, 0, 0.3) 80%, rgba(255, 0, 0, 0.6) 100%);
+  animation: lowHealthPulse 1.5s ease-in-out infinite;
+}
+
+/* --- Low Health Pulse Animation --- */
+@keyframes lowHealthPulse {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ==========================================================================
+   Phase 10: Hit Marker Polish
+   Enhanced animations with scale-in + fade-out
+   ========================================================================== */
+
+/* --- Enhanced Hit Marker (scale-in + fade-out) --- */
+.hud-hitmarker {
+  animation: hitMarkerEnhanced 0.25s ease-out forwards;
+}
+
+/* --- Enhanced Hit Marker Animation --- */
+@keyframes hitMarkerEnhanced {
+  0% {
+    transform: translate(-50%, -50%) scale(1.5);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.0);
+    opacity: 0;
+  }
+}
+
+/* --- Kill Hit Marker (red glow burst) --- */
+.hud-hitmarker-kill {
+  animation: hitMarkerKillBurst 0.35s ease-out forwards;
+}
+
+/* --- Kill Hit Marker Burst Animation --- */
+@keyframes hitMarkerKillBurst {
+  0% {
+    transform: translate(-50%, -50%) scale(1.8);
+    opacity: 0;
+    filter: drop-shadow(0 0 0 rgba(255, 23, 68, 0));
+  }
+  30% {
+    opacity: 1;
+    filter: drop-shadow(0 0 12px rgba(255, 23, 68, 0.8));
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.2);
+    opacity: 0;
+    filter: drop-shadow(0 0 24px rgba(255, 23, 68, 0.4));
+  }
+}
+
+/* ==========================================================================
+   Phase 10: Responsive Adjustments for Small Screens
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  /* --- Menu Container --- */
+  .menu-container {
+    padding: 32px 24px;
+    gap: 24px;
+  }
+
+  /* --- Menu Title --- */
+  .menu-title {
+    font-size: 24px;
+    letter-spacing: 4px;
+  }
+
+  /* --- Main Menu Title --- */
+  #main-menu-overlay .menu-title {
+    font-size: 32px;
+    letter-spacing: 5px;
+  }
+
+  /* --- Menu Buttons --- */
+  .menu-buttons {
+    max-width: 260px;
+  }
+
+  .menu-button {
+    padding: 12px 24px;
+    font-size: 14px;
+  }
+
+  .menu-button-primary {
+    font-size: 16px;
+  }
+
+  /* --- Controls List --- */
+  .controls-list {
+    max-width: 300px;
+    padding: 12px 16px;
+  }
+
+  .control-key {
+    font-size: 12px;
+    min-width: 60px;
+    padding: 3px 8px;
+  }
+
+  .control-action {
+    font-size: 12px;
+  }
+
+  /* --- Game Over Stats --- */
+  .game-over-stats {
+    max-width: 260px;
+    padding: 12px 16px;
+  }
+
+  .stat-label {
+    font-size: 12px;
+  }
+
+  .stat-value {
+    font-size: 18px;
+  }
+
+  /* --- Damage Indicator (adjust for smaller screens) --- */
+  .damage-indicator-flash {
+    background: radial-gradient(ellipse at center, transparent 30%, rgba(255, 0, 0, 0.4) 65%, rgba(255, 0, 0, 0.8) 100%);
+  }
+
+    /* --- Low Health Vignette (adjust for smaller screens) --- */
+  .low-health-vignette {
+    background: radial-gradient(ellipse at center, transparent 40%, rgba(255, 0, 0, 0.3) 75%, rgba(255, 0, 0, 0.6) 100%);
+  }
+
+  /* --- Grenade Count Display (adjust for smaller screens) --- */
+  .hud-grenade-count {
+    font-size: 12px;
+    letter-spacing: 1px;
+  }
+}
