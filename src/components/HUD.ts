@@ -47,7 +47,6 @@ export default class HUD {
   private playerState: PlayerState;
 
   // DOM element references for efficient updates
-  private positionElement: HTMLElement;
   private fpsElement: HTMLElement;
     private hintElement: HTMLElement;
 
@@ -319,18 +318,6 @@ export default class HUD {
     this.waveProgressTextElement.className = 'hud-wave-progress-text';
     this.waveProgressTextElement.textContent = '0%';
     topLeftPanel.appendChild(this.waveProgressTextElement);
-
-    // Position label
-    const positionLabel = document.createElement('div');
-    positionLabel.className = 'hud-label';
-    positionLabel.textContent = 'PLAYER POSITION';
-    topLeftPanel.appendChild(positionLabel);
-
-    // Position readout (updated per frame)
-    this.positionElement = document.createElement('div');
-    this.positionElement.className = 'hud-position';
-    this.positionElement.textContent = 'X: 0.00  Y: 1.70  Z: 0.00';
-    topLeftPanel.appendChild(this.positionElement);
 
     this.hudElement.appendChild(topLeftPanel);
 
@@ -683,11 +670,6 @@ export default class HUD {
         this.hitMarkerElement.style.display = 'none';
       }
     }
-
-    // --- Update Player Position Readout ---
-    const { x, y, z } = this.playerState.position;
-    this.positionElement.textContent =
-      `X: ${x.toFixed(2)}  Y: ${y.toFixed(2)}  Z: ${z.toFixed(2)}`;
 
     // --- Update FPS Counter ---
     // Guard against NaN (can happen on the very first frame)
