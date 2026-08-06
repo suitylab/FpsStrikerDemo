@@ -40,6 +40,7 @@ export default class WaveManager {
   private enemySystem: EnemySystem;
   private onWaveChangeCallback: (waveNumber: number) => void;
   private onGameOverCallback: (wavesSurvived: number, totalKills: number) => void;
+  private onWaveClearedCallback: () => void;
 
   /** Current wave number (1-based). */
   private waveNumber: number = 0;
@@ -77,17 +78,20 @@ export default class WaveManager {
    * @param enemySystem - The EnemySystem to drive spawning
    * @param onWaveChange - Callback when the wave number changes
    * @param onGameOver - Callback when the player dies (waves survived, total kills)
+   * @param onWaveCleared - Callback when a wave is cleared
    */
   constructor(
     scene: THREE.Scene,
     enemySystem: EnemySystem,
     onWaveChange: (waveNumber: number) => void,
-    onGameOver: (wavesSurvived: number, totalKills: number) => void
+    onGameOver: (wavesSurvived: number, totalKills: number) => void,
+    onWaveCleared: () => void
   ) {
     this.scene = scene;
     this.enemySystem = enemySystem;
     this.onWaveChangeCallback = onWaveChange;
     this.onGameOverCallback = onGameOver;
+    this.onWaveClearedCallback = onWaveCleared;
 
     // Create the announcement overlay DOM structure
     this.createOverlay();
@@ -340,6 +344,9 @@ export default class WaveManager {
 
       // Update total kills
       this.totalKills = this.enemySystem.getKillCount();
+
+      // Reward player: wave cleared callback
+      this.onWaveClearedCallback();
 
       // Show wave cleared announcement
       this.showAnnouncement(`WAVE ${this.waveNumber} CLEARED`, WAVE_CLEARED_DURATION);

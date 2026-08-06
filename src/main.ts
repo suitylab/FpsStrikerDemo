@@ -231,6 +231,10 @@ function init(): void {
       if (killsElement) {
         killsElement.textContent = String(totalKills);
       }
+    },
+    () => {
+      // Wave cleared reward: heal 50% of max health
+      playerHealth.heal(playerHealth.getMaxHealth() * 0.5);
     }
   );
 
