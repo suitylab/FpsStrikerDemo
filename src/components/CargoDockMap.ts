@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import CollisionManager from './CollisionManager';
-import { createConcreteTexture, createContainerTexture, createCorrugatedMetalTexture, createWoodTexture, createMetalTexture } from '../utils/TextureFactory';
+import { createConcreteTexture, createContainerTexture, createCorrugatedMetalTexture, createWoodTexture, createMetalTexture, createAsphaltTexture } from '../utils/TextureFactory';
 
 /**
  * CargoDockMap constructs the Cargo Dock map for the FPS Strike Survival game.
@@ -58,6 +58,15 @@ export default class CargoDockMap {
     mapGroup.add(this.createDockEdge());
     mapGroup.add(this.createWarningLights());
         mapGroup.add(this.createDebris());
+    mapGroup.add(this.createWarehouse());
+    mapGroup.add(this.createForklifts());
+    mapGroup.add(this.createFuelBarrels());
+    mapGroup.add(this.createCableReels());
+    mapGroup.add(this.createMooringEquipment());
+    mapGroup.add(this.createBollards());
+    mapGroup.add(this.createDockLines());
+    mapGroup.add(this.createOverheadGantry());
+    mapGroup.add(this.createOuterWalls());
 
     // Enable frustum culling on all meshes for performance
     mapGroup.traverse((child) => {
@@ -791,5 +800,611 @@ export default class CargoDockMap {
     }
 
     return debrisGroup;
+  }
+
+  /**
+   * Creates warehouse buildings along the dock edge for backdrop and cover.
+   * Simple sheet-metal workshop structures with a peaked (shed) roof.
+   *
+   * @returns THREE.Group containing the warehouse
+   */
+  private createWarehouse(): THREE.Group {
+    const warehouseGroup = new THREE.Group();
+    warehouseGroup.name = 'Warehouse';
+
+    const metalTexture = createMetalTexture();
+    const wallMat = new THREE.MeshStandardMaterial({
+      color: 0x9aa5ad,
+      roughness: 0.8,
+      metalness: 0.4,
+      map: metalTexture,
+    });
+    const roofMat = new THREE.MeshStandardMaterial({
+      color: 0x6a7a84,
+      roughness: 0.9,
+      metalness: 0.3,
+    });
+
+    // Warehouse footprint along south-east corner
+    const warehouseData = [
+      { x: -40, z: 34, width: 18, depth: 18, height: 6 },
+      { x: 30, z: 40, width: 20, depth: 16, height: 5.5 },
+    ];
+
+    for (const data of warehouseData) {
+      const building = new THREE.Group();
+      building.name = `Warehouse_${data.x}_${data.z}`;
+      building.position.set(data.x, 0, data.z);
+
+      // Walls
+      const wallGeo = new THREE.BoxGeometry(data.width, data.height, data.depth);
+      const walls = new THREE.Mesh(wallGeo, wallMat);
+      walls.position.y = data.height / 2;
+      walls.castShadow = true;
+      walls.receiveShadow = true;
+      building.add(walls);
+
+      // Shed roof (prism)
+      const roofShape = new THREE.Shape();
+      roofShape.moveTo(-data.width / 2, 0);
+      roofShape.lineTo(-data.width / 2, 1.2);
+      roofShape.lineTo(0, 2.2);
+      roofShape.lineTo(data.width / 2, 1.2);
+      roofShape.lineTo(data.width / 2, 0);
+      roofShape.closePath();
+      const roofExtrude = new THREE.ExtrudeGeometry(roofShape, {
+        depth: data.depth,
+        bevelEnabled: false,
+      });
+      const roof = new THREE.Mesh(roofExtrude, roofMat);
+      roof.rotation.x = Math.PI / 2;
+      roof.rotation.z = Math.PI / 2;
+      roof.rotation.y = Math.PI / 2;
+      roof.position.y = data.height;
+      roof.name = 'ShedRoof';
+      building.add(roof);
+
+      warehouseGroup.add(building);
+
+      // Register collider
+      this.collisionManager.addBox(
+        data.x - data.width / 2, 0, data.z - data.depth / 2,
+        data.x + data.width / 2, data.height, data.z + data.depth / 2,
+        `Warehouse_${data.x}_${data.z}`
+      );
+    }
+
+    return warehouseGroup;
+  }
+
+  /**
+   * Creates parked warehouse forklifts.
+   * Simplified body with mast, fork, and cab.
+   *
+   * @returns THREE.Group containing the forklifts
+   */
+  private createForklifts(): THREE.Group {
+    const forkliftGroup = new THREE.Group();
+    forkliftGroup.name = 'Forklifts';
+
+    const bodyMat = new THREE.MeshStandardMaterial({
+      color: 0xf0a020,
+      roughness: 0.6,
+      metalness: 0.4,
+    });
+    const darkMat = new THREE.MeshStandardMaterial({
+      color: 0x333333,
+      roughness: 0.8,
+      metalness: 0.2,
+    });
+
+    const data = [
+      { x: -32, z: -30, rotationY: 0.3 },
+      { x: 12, z: -32, rotationY: -0.5 },
+      { x: 34, z: -30, rotationY: 0.1 },
+      { x: -28, z: 0, rotationY: 2.6 },
+    ];
+
+    for (const item of data) {
+      const fl = new THREE.Group();
+      fl.position.set(item.x, 0, item.z);
+      fl.rotation.y = item.rotationY;
+
+      // Body
+      const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.0, 1.2), bodyMat);
+      body.position.y = 0.6;
+      body.castShadow = true;
+      fl.add(body);
+
+      // Cab (seat area)
+      const cab = new THREE.Mesh(new THREE.BoxGeometry(0.8, 1.4, 1.0), darkMat);
+      cab.position.set(-0.3, 1.2, 0);
+      cab.castShadow = true;
+      fl.add(cab);
+
+      // Mast (front vertical)
+      const mast = new THREE.Mesh(new THREE.BoxGeometry(0.5, 2.2, 0.5), darkMat);
+      mast.position.set(0.9, 1.3, 0);
+      fl.add(mast);
+
+      // Forks
+      const forkMat = new THREE.MeshStandardMaterial({
+        color: 0xb0b0b0,
+        roughness: 0.5,
+        metalness: 0.7,
+      });
+      const forkGeo = new THREE.BoxGeometry(1.2, 0.08, 0.1);
+      const fork1 = new THREE.Mesh(forkGeo, forkMat);
+      fork1.position.set(1.0, 0.15, 0.35);
+      fork1.rotation.x = Math.PI / 2;
+      fl.add(fork1);
+      const fork2 = fork1.clone();
+      fork2.position.z = -0.35;
+      fl.add(fork2);
+
+      // 4 wheels
+      const wheelGeo = new THREE.CylinderGeometry(0.3, 0.3, 0.2, 10);
+      const wheelMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9 });
+      for (const [wx, wz] of [[0.7, 0.65], [0.7, -0.65], [-0.7, 0.6], [-0.7, -0.6]]) {
+        const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+        wheel.rotation.x = Math.PI / 2;
+        wheel.position.set(wx, 0.3, wz);
+        fl.add(wheel);
+      }
+
+      forkliftGroup.add(fl);
+
+      // Register collider
+      const cos = Math.cos(item.rotationY);
+      const sin = Math.sin(item.rotationY);
+      const rotatedHalfX = Math.abs(cos) * 1.2 + Math.abs(sin) * 0.8;
+      const rotatedHalfZ = Math.abs(sin) * 1.2 + Math.abs(cos) * 0.8;
+      this.collisionManager.addBox(
+        item.x - rotatedHalfX, 0, item.z - rotatedHalfZ,
+        item.x + rotatedHalfX, 1.6, item.z + rotatedHalfZ,
+        `Forklift_${item.x}_${item.z}`
+      );
+    }
+
+    return forkliftGroup;
+  }
+
+  /**
+   * Creates clusters of fuel/chemical barrels stacked in rows.
+   *
+   * @returns THREE.Group containing the fuel barrels
+   */
+  private createFuelBarrels(): THREE.Group {
+    const barrelGroup = new THREE.Group();
+    barrelGroup.name = 'FuelBarrels';
+
+    const barrelMat = new THREE.MeshStandardMaterial({
+      color: 0xc03a2a,
+      roughness: 0.5,
+      metalness: 0.3,
+    });
+
+    // Barrel cluster data: [centerX, centerZ, count, rotation]
+    const clusters = [
+      { x: -33, z: -28, count: 6 },
+      { x: 10, z: -28, count: 8 },
+      { x: -30, z: 10, count: 5 },
+      { x: 14, z: 22, count: 7 },
+      { x: 0, z: 0, count: 4 },
+    ];
+
+    for (const cluster of clusters) {
+      // Arrange in a 3-wide grid
+      const cols = 3;
+      const spacing = 0.6;
+      for (let i = 0; i < cluster.count; i++) {
+        const row = Math.floor(i / cols);
+        const col = i % cols;
+        const ox = (col - (cols - 1) / 2) * spacing;
+        const oz = row * spacing;
+        const height = 0.9;
+
+        const barrel = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.4, 0.4, height, 10),
+          barrelMat
+        );
+        barrel.position.set(cluster.x + ox, height / 2, cluster.z + oz);
+        barrel.rotation.y = Math.random() * Math.PI;
+        barrel.castShadow = true;
+        barrel.receiveShadow = true;
+        barrel.name = `FuelBarrel_${cluster.x}_${cluster.z}_${i}`;
+        barrelGroup.add(barrel);
+
+        // Lid ring
+        const lid = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.41, 0.41, 0.06, 10),
+          barrelMat
+        );
+        lid.position.set(cluster.x + ox, height + 0.03, cluster.z + oz);
+        barrelGroup.add(lid);
+
+        this.collisionManager.addBox(
+          cluster.x + ox - 0.42, 0, cluster.z + oz - 0.42,
+          cluster.x + ox + 0.42, height, cluster.z + oz + 0.42,
+          `FuelBarrel_${cluster.x}_${cluster.z}_${i}`
+        );
+      }
+    }
+
+    return barrelGroup;
+  }
+
+  /**
+   * Creates large industrial cable reels scattered around the dock.
+   *
+   * @returns THREE.Group containing the cable reels
+   */
+  private createCableReels(): THREE.Group {
+    const reelGroup = new THREE.Group();
+    reelGroup.name = 'CableReels';
+
+    const drumMat = new THREE.MeshStandardMaterial({
+      color: 0x7a5a34,
+      roughness: 0.85,
+      metalness: 0.1,
+      map: createWoodTexture(),
+    });
+    const spoolMat = new THREE.MeshStandardMaterial({
+      color: 0x556677,
+      roughness: 0.6,
+      metalness: 0.5,
+    });
+
+    const data = [
+      { x: -18, z: -26, rotationY: 0 },
+      { x: 6, z: -26, rotationY: 0.5 },
+      { x: 14, z: 0, rotationY: 0.3 },
+      { x: -16, z: 12, rotationY: 0.2 },
+      { x: 6, z: 30, rotationY: 0.6 },
+    ];
+
+    for (const item of data) {
+      const reel = new THREE.Group();
+      reel.position.set(item.x, 0, item.z);
+      reel.rotation.y = item.rotationY;
+
+      // Drum (cable barrel)
+      const drum = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 1.0, 14), spoolMat);
+      drum.rotation.x = Math.PI / 2;
+      drum.position.y = 0.5;
+      drum.castShadow = true;
+      reel.add(drum);
+
+      // Two wooden flanges
+      const flangeGeo = new THREE.CylinderGeometry(1.1, 1.1, 0.12, 14);
+      const flangeL = new THREE.Mesh(flangeGeo, drumMat);
+      flangeL.rotation.x = Math.PI / 2;
+      flangeL.position.set(-0.55, 0.5, 0);
+      flangeL.castShadow = true;
+      reel.add(flangeL);
+      const flangeR = flangeL.clone();
+      flangeR.position.x = 0.55;
+      reel.add(flangeR);
+
+      reelGroup.add(reel);
+
+      // Register collider
+      this.collisionManager.addBox(
+        item.x - 1.1, 0, item.z - 1.1,
+        item.x + 1.1, 1.1, item.z + 1.1,
+        `CableReel_${item.x}_${item.z}`
+      );
+    }
+
+    return reelGroup;
+  }
+
+  /**
+   * Creates mooring equipment along the water edge: posts, fenders,
+   * and a lifebuoy cluster.
+   *
+   * @returns THREE.Group containing the mooring equipment
+   */
+  private createMooringEquipment(): THREE.Group {
+    const mooringGroup = new THREE.Group();
+    mooringGroup.name = 'MooringEquipment';
+
+    const postMat = new THREE.MeshStandardMaterial({
+      color: 0x8a8a8a,
+      roughness: 0.6,
+      metalness: 0.5,
+    });
+    const concreteMat = new THREE.MeshStandardMaterial({
+      color: 0xb0b0b0,
+      roughness: 0.9,
+      metalness: 0.1,
+    });
+
+    // Mooring posts along the dock edge (z = -48)
+    const postXs = [-45, -30, -10, 5, 25, 42];
+    for (const px of postXs) {
+      const base = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.7, 1.0), concreteMat);
+      base.position.set(px, 0.35, -48);
+      base.castShadow = true;
+      mooringGroup.add(base);
+
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.25, 1.1, 8), postMat);
+      post.position.set(px, 1.1, -48);
+      mooringGroup.add(post);
+
+      this.collisionManager.addBox(
+        px - 0.5, 0, -48.5,
+        px + 0.5, 1.3, -47.5,
+        `MooringPost_${px}`
+      );
+    }
+
+    // Tires / rubber fenders hung against the dock edge
+    const fenderMat = new THREE.MeshStandardMaterial({
+      color: 0x222222,
+      roughness: 0.9,
+      metalness: 0.1,
+    });
+    const fenderXs = [-22, 2, 32];
+    for (const fx of fenderXs) {
+      const fender = new THREE.Mesh(
+        new THREE.TorusGeometry(0.45, 0.18, 8, 12),
+        fenderMat
+      );
+      fender.position.set(fx, 1.2, -47.8);
+      fender.castShadow = true;
+      mooringGroup.add(fender);
+    }
+
+    // Lifebuoy near the dock office
+    const buoyMat = new THREE.MeshStandardMaterial({
+      color: 0xcc2222,
+      roughness: 0.5,
+      metalness: 0.1,
+      emissive: 0x662222,
+      emissiveIntensity: 0.2,
+    });
+    const buoy = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.12, 8, 14), buoyMat);
+    buoy.position.set(-20, 0.9, -49);
+    buoy.rotation.x = Math.PI / 2;
+    buoy.castShadow = true;
+    mooringGroup.add(buoy);
+
+    return mooringGroup;
+  }
+
+  /**
+   * Creates round concrete bollards/stanchions scattered on the apron
+   * to mark traffic lanes and provide cover.
+   *
+   * @returns THREE.Group containing the bollards
+   */
+  private createBollards(): THREE.Group {
+    const bollardGroup = new THREE.Group();
+    bollardGroup.name = 'Bollards';
+
+    const bollardMat = new THREE.MeshStandardMaterial({
+      color: 0xc8c8c8,
+      roughness: 0.8,
+      metalness: 0.1,
+    });
+
+    const bollardData = [
+      { x: -35, z: -5, height: 0.9 },
+      { x: 35, z: -5, height: 0.9 },
+      { x: -38, z: 12, height: 0.9 },
+      { x: 30, z: 12, height: 1.1 },
+      { x: -16, z: 32, height: 0.9 },
+      { x: 14, z: 33, height: 1.0 },
+    ];
+
+    for (const item of bollardData) {
+      const bollard = new THREE.Mesh(
+        new THREE.CylinderGeometry(item.height * 0.3, item.height * 0.38, item.height, 10),
+        bollardMat
+      );
+      bollard.position.set(item.x, item.height / 2, item.z);
+      bollard.castShadow = true;
+      bollard.receiveShadow = true;
+      bollard.name = `Bollard_${item.x}_${item.z}`;
+      bollardGroup.add(bollard);
+
+      // Safety cap (orange band)
+      const capMat = new THREE.MeshStandardMaterial({
+        color: 0xff7a1a,
+        roughness: 0.6,
+        metalness: 0.1,
+      });
+      const cap = new THREE.Mesh(
+        new THREE.CylinderGeometry(item.height * 0.33, item.height * 0.33, 0.15, 10),
+        capMat
+      );
+      cap.position.set(item.x, item.height - 0.05, item.z);
+      bollardGroup.add(cap);
+
+      const r = item.height * 0.4;
+      this.collisionManager.addBox(
+        item.x - r, 0, item.z - r,
+        item.x + r, item.height, item.z + r,
+        `Bollard_${item.x}_${item.z}`
+      );
+    }
+
+    return bollardGroup;
+  }
+
+  /**
+   * Creates painted traffic / guide lines on the concrete pavement
+   * (forklift lanes and safety walkways).
+   *
+   * @returns THREE.Group containing the dock lines
+   */
+  private createDockLines(): THREE.Group {
+    const linesGroup = new THREE.Group();
+    linesGroup.name = 'DockLines';
+
+    const lineMat = new THREE.MeshStandardMaterial({
+      color: 0xf5c518,
+      roughness: 0.6,
+      metalness: 0.1,
+    });
+    const whiteMat = new THREE.MeshStandardMaterial({
+      color: 0xf5f5f5,
+      roughness: 0.6,
+      metalness: 0.1,
+    });
+
+    const addLine = (x: number, z: number, w: number, l: number, rotY: number, mat: THREE.MeshStandardMaterial) => {
+      const line = new THREE.Mesh(new THREE.PlaneGeometry(w, l), mat);
+      line.rotation.x = -Math.PI / 2;
+      line.rotation.z = rotY;
+      line.position.set(x, 0.02, z);
+      line.receiveShadow = true;
+      linesGroup.add(line);
+    };
+
+    // Central yellow lane
+    addLine(-8, -8, 0.18, 48, 0, lineMat);
+    addLine(8, 10, 0.18, 48, 0, lineMat);
+    // Crosswalk / walkway dashes near containers
+    for (let i = 0; i < 6; i++) {
+      addLine(-30 + i * 3, 40, 0.12, 1.5, 0, whiteMat);
+    }
+
+    return linesGroup;
+  }
+
+  /**
+   * Creates an overhead loading gantry / truss bridge spanning part of the dock,
+   * complementing the portal cranes with additional industrial depth.
+   *
+   * @returns THREE.Group containing the overhead gantry
+   */
+  private createOverheadGantry(): THREE.Group {
+    const gantryGroup = new THREE.Group();
+    gantryGroup.name = 'OverheadGantry';
+
+    const steelMat = new THREE.MeshStandardMaterial({
+      color: 0x667788,
+      roughness: 0.5,
+      metalness: 0.7,
+    });
+
+    const gantryX = 0;
+    const gantryZ = -37;
+    const span = 24;
+    const archHeight = 5;
+
+    // Two portal frames
+    for (const zOff of [-6, 6]) {
+      const frame = new THREE.Group();
+      const legGeo = new THREE.BoxGeometry(0.5, archHeight, 0.5);
+      const l1 = new THREE.Mesh(legGeo, steelMat);
+      l1.position.set(-span / 2, archHeight / 2, zOff);
+      frame.add(l1);
+      const l2 = l1.clone();
+      l2.position.x = span / 2;
+      frame.add(l2);
+
+      const beam = new THREE.Mesh(
+        new THREE.BoxGeometry(span + 1, 0.6, 0.5),
+        steelMat
+      );
+      beam.position.set(0, archHeight + 0.3, zOff);
+      beam.castShadow = true;
+      frame.add(beam);
+
+      frame.position.set(gantryX, 0, gantryZ + zOff);
+      gantryGroup.add(frame);
+    }
+
+    // Top cross-member
+    const topBeam = new THREE.Mesh(
+      new THREE.BoxGeometry(span + 1, 0.5, 13),
+      steelMat
+    );
+    topBeam.position.set(gantryX, archHeight + 0.3, gantryZ);
+    topBeam.castShadow = true;
+    gantryGroup.add(topBeam);
+
+    // Some yellow caution chevrons on the structure
+    const chevronMat = new THREE.MeshStandardMaterial({
+      color: 0xf5c518,
+      roughness: 0.5,
+      metalness: 0.2,
+      emissive: 0xf5c518,
+      emissiveIntensity: 0.3,
+    });
+    for (let i = 0; i < 4; i++) {
+      const chev = new THREE.Mesh(
+        new THREE.BoxGeometry(2.0, 0.3, 0.6),
+        chevronMat
+      );
+      chev.position.set(-span / 2 + 3 + i * 4, archHeight + 0.6, gantryZ);
+      gantryGroup.add(chev);
+    }
+
+    // Register central legs collider
+    this.collisionManager.addBox(
+      gantryX - span / 2 - 0.3, 0, gantryZ - 6.3,
+      gantryX - span / 2 + 0.3, archHeight, gantryZ - 5.7,
+      'GantryLeftOuter'
+    );
+    this.collisionManager.addBox(
+      gantryX + span / 2 - 0.3, 0, gantryZ - 6.3,
+      gantryX + span / 2 + 0.3, archHeight, gantryZ - 5.7,
+      'GantryRightOuter'
+    );
+
+    return gantryGroup;
+  }
+
+  /**
+   * Creates the outer perimeter walls enclosing the cargo dock.
+   * Four long concrete/metal walls at the ±50m boundaries.
+   *
+   * @returns THREE.Group containing the outer walls
+   */
+  private createOuterWalls(): THREE.Group {
+    const wallGroup = new THREE.Group();
+    wallGroup.name = 'OuterWalls';
+
+    const half = 50;
+    const wallHeight = 3.5;
+    const wallThickness = 0.6;
+
+    const texture = createConcreteTexture();
+    texture.repeat.set(40, 2);
+    const material = new THREE.MeshStandardMaterial({
+      map: texture,
+      roughness: 0.85,
+      metalness: 0.2,
+    });
+
+    const wallDefs = [
+      { x: 0, z: -half, lenX: half * 2, lenZ: wallThickness },
+      { x: 0, z: half, lenX: half * 2, lenZ: wallThickness },
+      { x: -half, z: 0, lenX: wallThickness, lenZ: half * 2 },
+      { x: half, z: 0, lenX: wallThickness, lenZ: half * 2 },
+    ];
+
+    for (let i = 0; i < wallDefs.length; i++) {
+      const w = wallDefs[i];
+      const geometry = new THREE.BoxGeometry(w.lenX, wallHeight, w.lenZ);
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(w.x, wallHeight / 2, w.z);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.name = `OuterWall_${i}`;
+      wallGroup.add(mesh);
+
+      this.collisionManager.addBox(
+        w.x - w.lenX / 2, 0, w.z - w.lenZ / 2,
+        w.x + w.lenX / 2, wallHeight, w.z + w.lenZ / 2,
+        `OuterWall_${i}`
+      );
+    }
+
+    return wallGroup;
   }
 }

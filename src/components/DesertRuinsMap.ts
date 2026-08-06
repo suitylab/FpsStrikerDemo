@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import CollisionManager from './CollisionManager';
-import { createSandTexture, createStoneTexture } from '../utils/TextureFactory';
+import { createSandTexture, createStoneTexture, createWoodTexture } from '../utils/TextureFactory';
 
 /**
  * DesertRuinsMap constructs the Desert Ruins map for the FPS Strike Survival game.
@@ -56,6 +56,17 @@ export default class DesertRuinsMap {
     mapGroup.add(this.createArchway());
         mapGroup.add(this.createRocks());
     mapGroup.add(this.createBushes());
+
+    // Enhanced desert details: abandoned structures & props
+    mapGroup.add(this.createAbandonedHouses());
+    mapGroup.add(this.createWells());
+    mapGroup.add(this.createCacti());
+    mapGroup.add(this.createDeadTrees());
+    mapGroup.add(this.createTents());
+    mapGroup.add(this.createCarWreck());
+    mapGroup.add(this.createPottery());
+    mapGroup.add(this.createBarbedWire());
+    mapGroup.add(this.createOuterWalls());
 
     // Enable frustum culling on all meshes for performance
     mapGroup.traverse((child) => {
@@ -576,5 +587,732 @@ export default class DesertRuinsMap {
     }
 
     return bushesGroup;
+  }
+
+  // ==========================================================================
+  // Enhanced Desert Details (Abandoned Houses & Desert Props)
+  // ==========================================================================
+
+  /**
+   * Creates abandoned stone/mudbrick houses scattered across the ruins.
+   * These half-collapsed huts serve as landmark cover and thematic detail.
+   *
+   * @returns THREE.Group containing the abandoned houses
+   */
+  public createAbandonedHouses(): THREE.Group {
+    const housesGroup = new THREE.Group();
+    housesGroup.name = 'AbandonedHouses';
+
+    // [x, z, width, depth, height, rotationY]
+    const hutData = [
+      { x: -28, z: -34, width: 5, depth: 4, height: 3.2, rotationY: 0.2 },
+      { x: -5, z: -38, width: 4, depth: 5, height: 3.0, rotationY: -0.3 },
+      { x: 22, z: -35, width: 5, depth: 4, height: 3.4, rotationY: 0.15 },
+      { x: -35, z: 32, width: 4, depth: 5, height: 3.0, rotationY: -0.4 },
+      { x: -10, z: 36, width: 5, depth: 4, height: 3.3, rotationY: 0.1 },
+      { x: 25, z: 34, width: 5, depth: 5, height: 3.1, rotationY: 0.35 },
+      { x: 3, z: 20, width: 4, depth: 4, height: 3.0, rotationY: 0.5 },
+      { x: -3, z: -25, width: 5, depth: 4, height: 3.2, rotationY: -0.2 },
+    ];
+
+    for (const data of hutData) {
+      housesGroup.add(this.createAbandonedHut(
+        data.x, data.z, data.width, data.depth, data.height, data.rotationY
+      ));
+    }
+
+    return housesGroup;
+  }
+
+  /**
+   * Creates a single abandoned mudbrick/stone house with a collapsed roof
+   * opening, wall gaps, and a door opening for tactical cover.
+   *
+   * @param x - Center X
+   * @param z - Center Z
+   * @param width - Width (X)
+   * @param depth - Depth (Z)
+   * @param height - Height (Y)
+   * @param rotationY - Y rotation
+   * @returns THREE.Group containing the abandoned house
+   */
+  private createAbandonedHut(
+    x: number,
+    z: number,
+    width: number,
+    depth: number,
+    height: number,
+    rotationY: number
+  ): THREE.Group {
+    const hutGroup = new THREE.Group();
+    hutGroup.name = `AbandonedHut_${x}_${z}`;
+    hutGroup.position.set(x, 0, z);
+    hutGroup.rotation.y = rotationY;
+
+    // Mudbrick / plastered stone material (warm desert tones)
+    const wallTex = createSandTexture();
+    wallTex.repeat.set(2, 2);
+    const wallMaterial = new THREE.MeshStandardMaterial({
+      map: wallTex,
+      color: 0xc9a86b,
+      roughness: 0.95,
+      metalness: 0.0,
+    });
+
+    const wallThickness = 0.4;
+
+    // Frame of four walls (left/right + back; front is left open as a door)
+    // Front wall is omitted to leave an entrance gap.
+    const frontZ = depth / 2;
+    const backZ = -depth / 2;
+
+    // Back wall
+    const backWall = new THREE.Mesh(
+      new THREE.BoxGeometry(width, height, wallThickness),
+      wallMaterial
+    );
+    backWall.position.set(0, height / 2, backZ);
+    backWall.castShadow = true;
+    backWall.receiveShadow = true;
+    hutGroup.add(backWall);
+
+    // Left wall (with a portion of top collapsed)
+    const leftWall = new THREE.Mesh(
+      new THREE.BoxGeometry(wallThickness, height * 0.8, depth),
+      wallMaterial
+    );
+    leftWall.position.set(-width / 2, height * 0.4, 0);
+    leftWall.castShadow = true;
+    leftWall.receiveShadow = true;
+    hutGroup.add(leftWall);
+
+    // Right wall
+    const rightWall = new THREE.Mesh(
+      new THREE.BoxGeometry(wallThickness, height, depth),
+      wallMaterial
+    );
+    rightWall.position.set(width / 2, height / 2, 0);
+    rightWall.castShadow = true;
+    rightWall.receiveShadow = true;
+    hutGroup.add(rightWall);
+
+    // Front door frame columns (flank the entrance)
+    const doorFrameMat = new THREE.MeshStandardMaterial({
+      color: 0x7a5a34,
+      roughness: 0.9,
+      metalness: 0.0,
+    });
+    const frameGeo = new THREE.BoxGeometry(0.35, height, 0.35);
+    const frameLeft = new THREE.Mesh(frameGeo, doorFrameMat);
+    frameLeft.position.set(-width / 2 + 0.5, height / 2, frontZ);
+    frameLeft.castShadow = true;
+    hutGroup.add(frameLeft);
+    const frameRight = new THREE.Mesh(frameGeo, doorFrameMat);
+    frameRight.position.set(width / 2 - 0.5, height / 2, frontZ);
+    frameRight.castShadow = true;
+    hutGroup.add(frameRight);
+
+    // Collapsed partial roof (tilted slab for the ruined look)
+    const roofTex = createStoneTexture();
+    roofTex.repeat.set(2, 2);
+    const roofMaterial = new THREE.MeshStandardMaterial({
+      map: roofTex,
+      roughness: 0.9,
+      metalness: 0.0,
+    });
+    const roof = new THREE.Mesh(
+      new THREE.BoxGeometry(width + 0.6, 0.25, depth),
+      roofMaterial
+    );
+    roof.position.set(0, height + 0.1, -0.4);
+    roof.rotation.x = -0.15; // sagging toward the back
+    roof.castShadow = true;
+    roof.receiveShadow = true;
+    hutGroup.add(roof);
+
+    // A fallen beam across the opening
+    const beamTex = createWoodTexture();
+    const beamMat = new THREE.MeshStandardMaterial({
+      map: beamTex,
+      roughness: 0.9,
+      metalness: 0.0,
+    });
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(width * 0.9, 0.25, 0.25), beamMat);
+    beam.position.set(0, height * 0.7, frontZ - 0.3);
+    beam.rotation.z = 0.2;
+    beam.castShadow = true;
+    hutGroup.add(beam);
+
+    // Register bounding-box collider around the structure
+    const cos = Math.cos(rotationY);
+    const sin = Math.sin(rotationY);
+    const hw = width / 2;
+    const hd = depth / 2;
+    const rotHalfX = Math.abs(cos) * hw + Math.abs(sin) * hd;
+    const rotHalfZ = Math.abs(sin) * hw + Math.abs(cos) * hd;
+    // Note: interior is left open by design; collider is the outer footprint.
+    this.collisionManager.addBox(
+      x - rotHalfX, 0, z - rotHalfZ,
+      x + rotHalfX, height + 0.4, z + rotHalfZ,
+      `AbandonedHut_${x}_${z}`
+    );
+
+    return hutGroup;
+  }
+
+  /**
+   * Creates desert water wells (rock-ringed with a wooden frame).
+   *
+   * @returns THREE.Group containing the wells
+   */
+  public createWells(): THREE.Group {
+    const wellsGroup = new THREE.Group();
+    wellsGroup.name = 'Wells';
+
+    const wellData = [
+      { x: 14, z: 34 },
+      { x: -32, z: -18 },
+      { x: -8, z: -6 },
+    ];
+
+    for (const data of wellData) {
+      wellsGroup.add(this.createWell(data.x, data.z));
+    }
+
+    return wellsGroup;
+  }
+
+  private createWell(x: number, z: number): THREE.Group {
+    const wellGroup = new THREE.Group();
+    wellGroup.name = `Well_${x}_${z}`;
+    wellGroup.position.set(x, 0, z);
+
+    const stoneTex = createStoneTexture();
+    stoneTex.repeat.set(1, 1);
+    const stoneMat = new THREE.MeshStandardMaterial({
+      map: stoneTex,
+      roughness: 0.95,
+      metalness: 0.0,
+    });
+
+    // Stone ring
+    const ring = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.0, 1.1, 0.8, 10),
+      stoneMat
+    );
+    ring.position.y = 0.4;
+    ring.castShadow = true;
+    ring.receiveShadow = true;
+    wellGroup.add(ring);
+
+    // Two wooden posts supporting a crossbar
+    const woodTex = createWoodTexture();
+    woodTex.repeat.set(1, 1);
+    const woodMat = new THREE.MeshStandardMaterial({
+      map: woodTex,
+      roughness: 0.9,
+      metalness: 0.0,
+      color: 0x8a6a44,
+    });
+    const postGeo = new THREE.CylinderGeometry(0.09, 0.11, 1.6, 8);
+    const post1 = new THREE.Mesh(postGeo, woodMat);
+    post1.position.set(-0.9, 0.8, 0.6);
+    wellGroup.add(post1);
+    const post2 = new THREE.Mesh(postGeo, woodMat);
+    post2.position.set(0.9, 0.8, 0.6);
+    wellGroup.add(post2);
+
+    const crossbar = new THREE.Mesh(
+      new THREE.BoxGeometry(2.0, 0.12, 0.12),
+      woodMat
+    );
+    crossbar.position.set(0, 1.6, 0.6);
+    wellGroup.add(crossbar);
+
+    // Bucket hanging from the crossbar
+    const bucketMat = new THREE.MeshStandardMaterial({
+      color: 0x5a6a4a,
+      roughness: 0.8,
+      metalness: 0.2,
+    });
+    const bucket = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.24, 0.2, 0.3, 8),
+      bucketMat
+    );
+    bucket.position.set(0, 1.0, 0.6);
+    wellGroup.add(bucket);
+
+    // Register collider
+    this.collisionManager.addBox(
+      x - 1.1, 0, z - 1.1,
+      x + 1.1, 1.0, z + 1.1,
+      `Well_${x}_${z}`
+    );
+
+    return wellGroup;
+  }
+
+  /**
+   * Creates desert cacti as semi-cover and theme detail.
+   *
+   * @returns THREE.Group containing the cacti
+   */
+  public createCacti(): THREE.Group {
+    const cactiGroup = new THREE.Group();
+    cactiGroup.name = 'Cacti';
+
+    const cactusMat = new THREE.MeshStandardMaterial({
+      color: 0x3a6b2e,
+      roughness: 0.7,
+      metalness: 0.0,
+      flatShading: true,
+    });
+
+    const data = [
+      { x: -25, z: -25, h: 1.6 },
+      { x: 22, z: -22, h: 1.3 },
+      { x: -30, z: 20, h: 1.5 },
+      { x: 30, z: 22, h: 1.7 },
+      { x: -2, z: 32, h: 1.4 },
+      { x: 2, z: -30, h: 1.2 },
+      { x: -15, z: 2, h: 1.5 },
+      { x: 13, z: -3, h: 1.3 },
+    ];
+
+    for (const d of data) {
+      const cactus = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, d.h, 8), cactusMat);
+      cactus.position.set(d.x, d.h / 2, d.z);
+      cactus.castShadow = true;
+      cactus.name = `Cactus_${d.x}_${d.z}`;
+      cactiGroup.add(cactus);
+
+      // Two small arms
+      const armMat = new THREE.MeshStandardMaterial({
+        color: 0x3a6b2e,
+        roughness: 0.7,
+        metalness: 0.0,
+        flatShading: true,
+      });
+      const armGeo = new THREE.CylinderGeometry(0.08, 0.08, d.h * 0.5, 6);
+      const arm1 = new THREE.Mesh(armGeo, armMat);
+      arm1.position.set(-0.25, d.h * 0.7, 0);
+      arm1.rotation.z = 0.5;
+      cactus.add(arm1);
+
+      // Cactus has mild collision so players can use as small cover
+      this.collisionManager.addBox(
+        d.x - 0.3, 0, d.z - 0.3,
+        d.x + 0.3, d.h, d.z + 0.3,
+        `Cactus_${d.x}_${d.z}`
+      );
+    }
+
+    return cactiGroup;
+  }
+
+  /**
+   * Creates dead (dried) trees that fit the desert theme.
+   *
+   * @returns THREE.Group containing dead trees
+   */
+  public createDeadTrees(): THREE.Group {
+    const treesGroup = new THREE.Group();
+    treesGroup.name = 'DeadTrees';
+
+    const woodTex = createWoodTexture();
+    woodTex.repeat.set(1, 2);
+    const trunkMat = new THREE.MeshStandardMaterial({
+      map: woodTex,
+      color: 0x6a5533,
+      roughness: 0.9,
+      metalness: 0.0,
+    });
+
+    const data = [
+      { x: -38, z: 8, h: 3.2 },
+      { x: 38, z: -8, h: 2.8 },
+      { x: 20, z: 18, h: 3.0 },
+      { x: -18, z: -22, h: 2.6 },
+      { x: 6, z: 6, h: 3.4 },
+    ];
+
+    for (const d of data) {
+      const tree = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.25, d.h, 6), trunkMat);
+      tree.position.set(d.x, d.h / 2, d.z);
+      tree.rotation.z = 0.1;
+      tree.rotation.x = 0.08;
+      tree.castShadow = true;
+      tree.name = `DeadTree_${d.x}_${d.z}`;
+      treesGroup.add(tree);
+
+      // Bare branches (thin cylinders, no leaves)
+      const branchMat = new THREE.MeshStandardMaterial({
+        color: 0x5a4430,
+        roughness: 0.9,
+        metalness: 0.0,
+      });
+      // add calls internal in the loop
+      const branchCount = 3;
+      for (let b = 0; b < branchCount; b++) {
+        const branch = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.05, 0.07, d.h * 0.4, 5),
+          branchMat
+        );
+        const angle = (b / branchCount) * Math.PI * 2;
+        branch.position.set(
+          d.x + Math.cos(angle) * 0.4,
+          d.h * 0.75,
+          d.z + Math.sin(angle) * 0.4
+        );
+        branch.rotation.z = Math.cos(angle) * 0.7;
+        branch.rotation.x = Math.sin(angle) * 0.7 * -1;
+        branch.castShadow = true;
+        treesGroup.add(branch);
+      }
+
+      this.collisionManager.addBox(
+        d.x - 0.3, 0, d.z - 0.3,
+        d.x + 0.3, d.h, d.z + 0.3,
+        `DeadTree_${d.x}_${d.z}`
+      );
+    }
+
+    return treesGroup;
+  }
+
+  /**
+   * Creates weathered nomad tents with canvas and poles.
+   *
+   * @returns THREE.Group containing the tents
+   */
+  public createTents(): THREE.Group {
+    const tentsGroup = new THREE.Group();
+    tentsGroup.name = 'Tents';
+
+    const data = [
+      { x: -32, z: -35, h: 2.2 },
+      { x: 28, z: 36, h: 2.4 },
+      { x: -5, z: 15, h: 2.0 },
+      { x: 18, z: -32, h: 2.3 },
+    ];
+
+    for (const d of data) {
+      const tentGroup = new THREE.Group();
+      tentGroup.name = `Tent_${d.x}_${d.z}`;
+      tentGroup.position.set(d.x, 0, d.z);
+      tentGroup.rotation.y = (d.x % 3) * 0.5;
+
+      // Canvas fabric (brown sun-bleached)
+      const canvasMat = new THREE.MeshStandardMaterial({
+        color: 0xcaa86a,
+        roughness: 0.9,
+        metalness: 0.0,
+        side: THREE.DoubleSide,
+      });
+      const bodyMat = new THREE.MeshStandardMaterial({
+        color: 0x8a6a44,
+        roughness: 0.9,
+        metalness: 0.0,
+        side: THREE.DoubleSide,
+      });
+
+      // Pyramid-style canopy (4 slanted triangles approximated by cone)
+      const canopy = new THREE.Mesh(
+        new THREE.ConeGeometry(1.6, d.h, 4),
+        canvasMat
+      );
+      canopy.position.y = d.h * 0.75;
+      canopy.castShadow = true;
+      tentGroup.add(canopy);
+
+      // Bottom wall skirt
+      const skirt = new THREE.Mesh(
+        new THREE.BoxGeometry(4.4, 0.9, 4.4),
+        bodyMat
+      );
+      skirt.position.y = 0.45;
+      skirt.castShadow = true;
+      tentGroup.add(skirt);
+
+      // Door opening flap (dark)
+      const flapMat = new THREE.MeshStandardMaterial({
+        color: 0x6a4a2a,
+        roughness: 0.9,
+        metalness: 0.0,
+        side: THREE.DoubleSide,
+      });
+      const flap = new THREE.Mesh(
+        new THREE.BoxGeometry(0.9, 1.2, 0.1),
+        flapMat
+      );
+      flap.position.set(0, 0.6, 2.25);
+      tentGroup.add(flap);
+
+      tentsGroup.add(tentGroup);
+
+      this.collisionManager.addBox(
+        d.x - 2.2, 0, d.z - 2.2,
+        d.x + 2.2, d.h * 0.8, d.z + 2.2,
+        `Tent_${d.x}_${d.z}`
+      );
+    }
+
+    return tentsGroup;
+  }
+
+  /**
+   * Creates an aged 4x4 vehicle wreck as desert detail.
+   * Non-functional (body only) with plenty of cover potential.
+   *
+   * @returns THREE.Group containing the car wreck
+   */
+  public createCarWreck(): THREE.Group {
+    const wreckGroup = new THREE.Group();
+    wreckGroup.name = 'CarWreck';
+    wreckGroup.position.set(20, 0, -18);
+    wreckGroup.rotation.y = -0.6;
+
+    const rustMat = new THREE.MeshStandardMaterial({
+      color: 0x8a5a3a,
+      roughness: 0.9,
+      metalness: 0.3,
+    });
+
+    // Body
+    const body = new THREE.Mesh(new THREE.BoxGeometry(4.5, 1.0, 2.0), rustMat);
+    body.position.y = 0.7;
+    body.castShadow = true;
+    body.receiveShadow = true;
+    body.name = 'WreckBody';
+    wreckGroup.add(body);
+
+    // Cabin (roofless)
+    const cabMat = new THREE.MeshStandardMaterial({
+      color: 0x6a4a3a,
+      roughness: 0.9,
+      metalness: 0.3,
+    });
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(2.4, 1.0, 1.6), cabMat);
+    cabin.position.set(-0.4, 1.25, 0);
+    cabin.castShadow = true;
+    wreckGroup.add(cabin);
+
+    // Boot / tail cover missing
+    const hoodMat = new THREE.MeshStandardMaterial({
+      color: 0x9a6a4a,
+      roughness: 0.9,
+      metalness: 0.3,
+    });
+    const hood = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.7, 1.6), hoodMat);
+    hood.position.set(1.8, 1.0, 0);
+    hood.rotation.z = 0.15;
+    hood.castShadow = true;
+    wreckGroup.add(hood);
+
+    // Wheels (4, slightly detached/tilted for wreck look)
+    const tireMat = new THREE.MeshStandardMaterial({
+      color: 0x2a2a2a,
+      roughness: 1.0,
+      metalness: 0.0,
+    });
+    const wheelGeo = new THREE.CylinderGeometry(0.45, 0.45, 0.3, 10);
+    const wheelPos = [
+      [1.7, 0.45, 0.85],
+      [-1.6, 0.45, 0.85],
+      [1.7, 0.45, -0.85],
+      [-1.6, 0.45, -0.85],
+    ];
+    for (const p of wheelPos) {
+      const wheel = new THREE.Mesh(wheelGeo, tireMat);
+      wheel.rotation.x = Math.PI / 2;
+      wheel.rotation.z = 0.4;
+      wheel.position.set(p[0], p[1], p[2]);
+      wheel.castShadow = true;
+      wreckGroup.add(wheel);
+    }
+
+    // Register collider
+    this.collisionManager.addBox(
+      20 - 2.3, 0, -18 - 1.1,
+      20 + 2.3, 1.3, -18 + 1.1,
+      'CarWreck'
+    );
+
+    return wreckGroup;
+  }
+
+  /**
+   * Creates scattered clay/ceramic pottery and broken fragments.
+   *
+   * @returns THREE.Group containing the pottery
+   */
+  public createPottery(): THREE.Group {
+    const potteryGroup = new THREE.Group();
+    potteryGroup.name = 'Pottery';
+
+    const potMat = new THREE.MeshStandardMaterial({
+      color: 0xb08050,
+      roughness: 0.9,
+      metalness: 0.0,
+      flatShading: true,
+    });
+
+    const data = [
+      { x: -14, z: 14, s: 0.4 },
+      { x: 14, z: -14, s: 0.5 },
+      { x: -22, z: -20, s: 0.35 },
+      { x: 22, z: 20, s: 0.45 },
+      { x: -3, z: -12, s: 0.4 },
+      { x: 3, z: -20, s: 0.5 },
+      { x: 8, z: 8, s: 0.4 },
+      { x: -8, z: 26, s: 0.45 },
+    ];
+
+    for (const d of data) {
+      const pot = new THREE.Mesh(
+        new THREE.CylinderGeometry(d.s * 0.55, d.s * 0.8, d.s * 0.9, 7),
+        potMat
+      );
+      pot.position.set(d.x, d.s * 0.45, d.z);
+      pot.rotation.y = Math.random() * Math.PI;
+      pot.castShadow = true;
+      pot.name = `Pot_${d.x}_${d.z}`;
+      potteryGroup.add(pot);
+
+      // Small lip detail
+      const lip = new THREE.Mesh(
+        new THREE.CylinderGeometry(d.s * 0.6, d.s * 0.6, 0.1, 7),
+        potMat
+      );
+      lip.position.set(d.x, d.s * 0.9, d.z);
+      potteryGroup.add(lip);
+    }
+
+    return potteryGroup;
+  }
+
+  /**
+   * Creates a few old rusty metal posts strung with barbed wire.
+   *
+   * @returns THREE.Group containing barbed wire fence segments
+   */
+  public createBarbedWire(): THREE.Group {
+    const wireGroup = new THREE.Group();
+    wireGroup.name = 'BarbedWire';
+
+    const postMat = new THREE.MeshStandardMaterial({
+      color: 0x4a4a4a,
+      roughness: 0.8,
+      metalness: 0.6,
+    });
+    const wireMat = new THREE.MeshStandardMaterial({
+      color: 0x666666,
+      roughness: 0.7,
+      metalness: 0.6,
+    });
+
+    // Fence runs: [start x, start z, length, rotationY]
+    const runs = [
+      { sx: -30, sz: -32, len: 8, rot: 0.2 },
+      { sx: -34, sz: 30, len: 8, rot: 0.3 },
+      { sx: 26, sz: -30, len: 7, rot: -0.2 },
+    ];
+
+    for (const run of runs) {
+      // direction vector
+      const dx = Math.cos(run.rot);
+      const dz = Math.sin(run.rot);
+      const posts = Math.max(2, Math.round(run.len / 2));
+
+      const segmentGroup = new THREE.Group();
+      // Two horizontal barbed wires
+      for (let w = 0; w < 2; w++) {
+        const wireY = 0.6 + w * 0.4;
+        const wire = new THREE.Mesh(
+          new THREE.BoxGeometry(run.len, 0.03, 0.03),
+          wireMat
+        );
+        wire.position.set(run.sx + (dx * run.len) / 2, wireY, run.sz + (dz * run.len) / 2);
+        wire.rotation.y = run.rot;
+        wireGroup.add(wire);
+      }
+
+      for (let p = 0; p <= posts; p++) {
+        const f = p / posts;
+        const px = run.sx + dx * run.len * f;
+        const pz = run.sz + dz * run.len * f;
+        const post = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.05, 0.05, 1.3, 6),
+          postMat
+        );
+        post.position.set(px, 0.65, pz);
+        post.rotation.z = 0.1;
+        post.castShadow = true;
+        wireGroup.add(post);
+      }
+
+      // Register fence posts colliders
+      for (let p = 0; p <= posts; p++) {
+        const dist = p / posts;
+        const px = run.sx + dx * run.len * dist;
+        const pz = run.sz + dz * run.len * dist;
+        this.collisionManager.addBox(
+          px - 0.1, 0, pz - 0.1,
+          px + 0.1, 1.3, pz + 0.1,
+          `BarbedWirePost_${run.sx}_${run.sz}_${p}`
+        );
+      }
+    }
+
+    return wireGroup;
+  }
+
+  /**
+   * Creates the outer perimeter walls enclosing the desert map.
+   * Four long stone walls at the ±50m boundaries.
+   *
+   * @returns THREE.Group containing the outer walls
+   */
+  private createOuterWalls(): THREE.Group {
+    const wallGroup = new THREE.Group();
+    wallGroup.name = 'OuterWalls';
+
+    const half = 50;
+    const wallHeight = 3.0;
+    const wallThickness = 0.6;
+
+    const texture = createStoneTexture();
+    texture.repeat.set(30, 2);
+    const material = new THREE.MeshStandardMaterial({
+      map: texture,
+      roughness: 0.95,
+      metalness: 0.0,
+    });
+
+    const wallDefs = [
+      { x: 0, z: -half, lenX: half * 2, lenZ: wallThickness },
+      { x: 0, z: half, lenX: half * 2, lenZ: wallThickness },
+      { x: -half, z: 0, lenX: wallThickness, lenZ: half * 2 },
+      { x: half, z: 0, lenX: wallThickness, lenZ: half * 2 },
+    ];
+
+    for (let i = 0; i < wallDefs.length; i++) {
+      const w = wallDefs[i];
+      const geometry = new THREE.BoxGeometry(w.lenX, wallHeight, w.lenZ);
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(w.x, wallHeight / 2, w.z);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.name = `OuterWall_${i}`;
+      wallGroup.add(mesh);
+
+      this.collisionManager.addBox(
+        w.x - w.lenX / 2, 0, w.z - w.lenZ / 2,
+        w.x + w.lenX / 2, wallHeight, w.z + w.lenZ / 2,
+        `OuterWall_${i}`
+      );
+    }
+
+    return wallGroup;
   }
 }
