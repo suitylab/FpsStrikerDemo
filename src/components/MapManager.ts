@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import CollisionManager from './CollisionManager';
-import MapBuilder from './MapBuilder';
+import TownStreetMap from './TownStreetMap';
 import DesertRuinsMap from './DesertRuinsMap';
 import CargoDockMap from './CargoDockMap';
 
@@ -40,12 +40,12 @@ export default class MapManager {
    * Creates a new MapManager and registers all default maps.
    */
   constructor() {
-    // Register Town Street (existing MapBuilder)
+    // Register Town Street
     this.registerMap({
       id: 'town-street',
       name: 'TOWN STREET',
       description: 'Urban street with buildings and cars',
-      builder: MapBuilder,
+      builder: TownStreetMap,
     });
 
     // Register Desert Ruins

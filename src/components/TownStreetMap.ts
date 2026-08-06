@@ -14,7 +14,7 @@ import {
 } from '../utils/TextureFactory';
 
 /**
- * MapBuilder constructs the detailed Town Street map from THREE.js primitives
+ * TownStreetMap constructs the detailed Town Street map from THREE.js primitives
  * with procedural textures, and registers all collidable objects with the
  * CollisionManager.
  *
@@ -25,8 +25,10 @@ import {
  * - Parked cars with metal texture
  * - Street lamps with emissive heads
  * - Dumpsters, concrete barriers, and planters for tactical cover
+ * - Enhanced details: awnings, trees, crates, barrels, hydrants, traffic cones,
+ *   mailboxes, benches, and outer perimeter walls
  */
-export default class MapBuilder {
+export default class TownStreetMap {
   private collisionManager: CollisionManager;
 
   /** Map boundary half-size (map is 100x100m, so ±50). */
