@@ -1,6 +1,6 @@
 # FPS STRIKE SURVIVAL
 
-[Demo URL](https://fps-strike.suitylab.com) | [SUITY Agentic Project](https://github.com/suitylab/Suity)
+[Demo URL](https://fps-striker-demo.suitylab.com/) | [SUITY Agentic Project](https://github.com/suitylab/Suity)
 
 > **This game is fully generated with SUITY Agentic, using DeepSeek V4 Flash.**
 
